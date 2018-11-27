@@ -1,0 +1,7 @@
+{
+  "extends": "stylelint-config-recommended",
+  "rules": {
+    "block-no-empty": [true, {"severity": "warning"}],
+    "selector-nested-pattern": "^&"
+  }
+}
