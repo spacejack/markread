@@ -40,7 +40,7 @@ To make the script work as a default application for `.md` files you'll need to 
 
 	GLib.filename_to_uri("/opt/markread/public/index.html", null)
 
-Now you can double-click `.md` files and auto launch this reader!
+Now you can right-click an `.md` file and set its default application to `/opt/markread/markread`. Then double-clicking `.md` files will auto-launch this app.
 
 ## TODO:
 
