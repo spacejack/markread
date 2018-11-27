@@ -1,9 +1,10 @@
-#!/usr/bin/gjs
+#!/usr/bin/env gjs
 
 imports.gi.versions.Gtk = '3.0'
 imports.gi.versions.WebKit2 = '4.0'
 
 const GLib = imports.gi.GLib
+const Gio = imports.gi.Gio
 const Gtk = imports.gi.Gtk
 const Webkit = imports.gi.WebKit2
 
@@ -14,6 +15,27 @@ const Webkit = imports.gi.WebKit2
  */
 function escapeString (str) {
 	return str.replace(/\'/g, "\\'").replace(/\n/g, '\\n')
+}
+
+/**
+ * Somewhat convoluted way to get abs app directory
+ */
+function getAppDirectory() {
+	const stack = (new Error()).stack
+	const stackLine = stack.split('\n')[1]
+	if (!stackLine) {
+		throw new Error('Could not find current file (1)')
+	}
+	const coincidence = /@(.+):\d+/.exec(stackLine)
+	if (!coincidence) {
+		throw new Error('Could not find current file (2)')
+	}
+	const path = coincidence[1]
+	const file = Gio.File.new_for_path(path)
+	return file.get_parent().get_path()
+	// full exe path: file.get_path(),
+	// full exe dir : file.get_parent().get_path(),
+	// exe basename : file.get_basename()
 }
 
 /**
@@ -39,9 +61,8 @@ function createApp (mkSrc, title) {
 
 		// Put the web app into the webview
 		webView.load_uri(
-			// TODO: How to find the public directory relative to this gjs app script?
-			// i.e., if the CWD isn't this script's directory.
-			GLib.filename_to_uri(GLib.get_current_dir() + "/../public/index.html", null)
+			//GLib.filename_to_uri(GLib.get_current_dir() + "/../public/index.html", null)
+			GLib.filename_to_uri(getAppDirectory() + "/public/index.html", null)
 		)
 
 		/**
@@ -59,6 +80,8 @@ function createApp (mkSrc, title) {
 			print('load-changed event')
 			numLoaded += 1
 			if (mkSrc != null && numLoaded === NUM_FILES_TO_LOAD) {
+				// Send the file we loaded to the browser context via
+				// a global window function that it has exposed
 				//GLib.timeout_add(null, 1000, () => {
 				const script = `handleMarkdownContent('${escapeString(mkSrc)}', '${escapeString(title)}')`
 				webView.run_javascript(script, null, () => {})
