@@ -28,7 +28,7 @@ First `npm run build` or `npm run compile`. Then:
 
 To install to `/opt/markread`:
 
-	npm run compile
+	npm run build
 	sudo mkdir /opt/markread
 	sudo chown <you> /opt/markread
 	sudo chgrp <you> /opt/markread

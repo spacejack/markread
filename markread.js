@@ -18,7 +18,8 @@ function escapeString (str) {
 }
 
 /**
- * Somewhat convoluted way to get abs app directory
+ * Somewhat convoluted way to get abs app directory.
+ * SEE: https://github.com/optimisme/gjs-examples/blob/master/egAsset.js#L17
  */
 function getAppDirectory() {
 	const stack = (new Error()).stack
@@ -41,6 +42,7 @@ function getAppDirectory() {
 /**
  * @param {string?} mkSrc
  * @param {string?} title
+ * @returns Gtk.Application
  */
 function createApp (mkSrc, title) {
 	const application = new Gtk.Application()
@@ -61,33 +63,38 @@ function createApp (mkSrc, title) {
 
 		// Put the web app into the webview
 		webView.load_uri(
-			//GLib.filename_to_uri(GLib.get_current_dir() + "/../public/index.html", null)
-			GLib.filename_to_uri(getAppDirectory() + "/public/index.html", null)
+			//GLib.filename_to_uri(`${GLib.get_current_dir()}/../public/index.html`, null)
+			GLib.filename_to_uri(`${getAppDirectory()}/public/index.html`, null)
 		)
 
-		/**
-		 * Tracks number of files loaded in webview.
-		 * We will send the markdown content (if any) after the
-		 * final file is loaded (of 3 total: HTML, JS, CSS)
-		 * TODO: How do we know when client-side script is ready
-		 * given an arbitrary number of web files?
-		 */
-		const NUM_FILES_TO_LOAD = 3
-		let numLoaded = 0
+		// If a markdown file was loaded on startup we need to send it
+		// to the client to render...
+		if (mkSrc != null) {
+			/**
+			 * Number of files we assume need to be loaded before we
+			 * can invoke client-side functions. (3 files: html, js, css.)
+			 * TODO: How can this be determined besides hard-coding it?
+			 */
+			const NUM_FILES_TO_LOAD = 3
+			/**
+			 * Tracks number of files loaded in webview.
+			 */
+			let numLoaded = 0
 
-		// When the page loads, use the markdown file from the CLI
-		webView.connect('load-changed', (self) => {
-			print('load-changed event')
-			numLoaded += 1
-			if (mkSrc != null && numLoaded === NUM_FILES_TO_LOAD) {
-				// Send the file we loaded to the browser context via
-				// a global window function that it has exposed
-				//GLib.timeout_add(null, 1000, () => {
-				const script = `handleMarkdownContent('${escapeString(mkSrc)}', '${escapeString(title)}')`
-				webView.run_javascript(script, null, () => {})
-				//})
-			}
-		})
+			// When the page loads, use the markdown file from the CLI
+			webView.connect('load-changed', self => {
+				numLoaded += 1
+				if (numLoaded === NUM_FILES_TO_LOAD) {
+					print(`Loading ${title}`)
+					// Send the file we loaded to the browser context via
+					// a global window function that it has exposed
+					//GLib.timeout_add(null, 1000, () => {
+					const script = `handleMarkdownContent('${escapeString(mkSrc)}', '${escapeString(title)}')`
+					webView.run_javascript(script, null, () => {})
+					//})
+				}
+			})
+		}
 
 		// Put the scrolled window into the app window
 		appWindow.add(webView)
