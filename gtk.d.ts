@@ -1,0 +1,16 @@
+interface GJS_Imports {
+	gi: {
+		versions: any
+		GLib: any
+		Gio: any
+		Gtk: any
+		WebKit2: any
+	}
+}
+
+declare const imports: GJS_Imports
+
+declare const ARGV: string[]
+
+/** Print to stdout */
+declare function print(msg: string): void
