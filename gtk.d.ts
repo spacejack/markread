@@ -3,6 +3,7 @@ interface GJS_Imports {
 		versions: any
 		GLib: any
 		Gio: any
+		GObject: any
 		Gtk: any
 		WebKit2: any
 	}
