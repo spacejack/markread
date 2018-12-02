@@ -1,8 +1,4 @@
-#!/usr/bin/env gjs
-
-//@ts-check
-
-///<reference path="gtk.d.ts"/>
+///<reference path="types/gtk.d.ts"/>
 
 imports.gi.versions.Gtk = '3.0'
 imports.gi.versions.WebKit2 = '4.0'
@@ -16,15 +12,13 @@ const Webkit = imports.gi.WebKit2
 /**
  * Escape a string so it can be used within a single-quoted string.
  * TODO: How to ensure safely sanitized?
- * @param {string | void} str
  */
-function escapeString (str) {
+function escapeString (str?: string) {
 	return str != null
 		? str.replace(/\'/g, "\\'").replace(/\n/g, '\\n') : ''
 }
 
-/** @param {string} path */
-function getBaseName (path) {
+function getBaseName (path: string) {
 	const pos = path.lastIndexOf('/')
 	return pos >= 0 ? path.substr(pos + 1) : path
 }
@@ -34,7 +28,7 @@ function getBaseName (path) {
  * SEE: https://github.com/optimisme/gjs-examples/blob/master/egAsset.js#L17
  * @returns {string} Absolute application directory path
  */
-function getAppDirectory() {
+function getAppDirectory(): string {
 	const stack = (new Error()).stack || ''
 	const stackLine = stack.split('\n')[1]
 	if (!stackLine) {
@@ -53,10 +47,11 @@ function getAppDirectory() {
 }
 
 /**
+ * TODO: Make this async? Don't swallow exception?
  * @param {string} filename
- * @returns {Uint8Array | void} File content as a buffer or undefined if failed.
+ * @returns File content as a buffer or undefined if failed.
  */
-function tryLoadFile (filename) {
+function tryLoadFile (filename: string): string | void {
 	try {
 		return GLib.file_get_contents(filename)[1]
 	} catch (err) {
@@ -65,26 +60,27 @@ function tryLoadFile (filename) {
 }
 
 /**
- * @param {string} filename Name of file to load
- * @returns {string | undefined} Text content of file
+ * @param filename Name of file to load
+ * @returns Text content of file or undefined if load failed
  */
-function tryLoadTextFile (filename) {
+function tryLoadTextFile (filename: string) {
 	const result = tryLoadFile(filename)
 	// TODO: How to avoid string conversion warning here?
 	return result != null ? String(result) : undefined
 }
 
 /**
- * @param {any} window
- * @returns {string | undefined}
+ * Show the Open File dialog.
+ * @param window The window that is opening the file dialog
+ * @returns The selected filename or undefined
  */
-function openDialog (window) {
+function openFileDialog (window: any): string | undefined {
 	const filter = new Gtk.FileFilter()
 	filter.add_mime_type('text/plain')
 
 	const chooser = new Gtk.FileChooserDialog({
 		action: Gtk.FileChooserAction.OPEN,
-		filter: filter,
+		filter,
 		select_multiple: false,
 		transient_for: window,
 		title: 'Open'
@@ -111,7 +107,7 @@ function openDialog (window) {
 	combo.pack_start(renderer, false)
 	combo.add_attribute(renderer, "text", 1)
 	combo.set_active(0)
-	combo.connect('changed', /** @param {any} widget */ widget => {
+	combo.connect('changed', (widget: any) => {
 		const model = widget.get_model()
 		const active = widget.get_active_iter()[1]
 		const type = model.get_value(active, 0)
@@ -136,12 +132,8 @@ function openDialog (window) {
 /**
  * Send the markdown source to the browser context via
  * a global window function that it has exposed.
- * @param {any} webView
- * @param {string} mkSrc
- * @param {string | void} filename
- * @returns {Promise<void>}
  */
-function sendMarkdownToWebView (webView, mkSrc, filename) {
+function sendMarkdownToWebView (webView: any, mkSrc: string, filename?: string) {
 	return new Promise(res => {
 		const script = `handleMarkdownContent('${escapeString(mkSrc)}', '${escapeString(filename)}')`
 		webView.run_javascript(script, null, () => {
@@ -151,31 +143,22 @@ function sendMarkdownToWebView (webView, mkSrc, filename) {
 	})
 }
 
-/**
-@typedef {{
-	run: (argv: string[]) => void
-	setTitle: (title: string) => void
-}} App
-*/
+interface App {
+	run(argv: string[]): void
+	setTitle(title: string): void
+}
 
 /**
- * @param {string | void} mkSrc
- * @param {string | void} title
- * @returns {App} Instance interface
+ * Create an App instance (wrapper for Gtk.Application)
  */
-function App (mkSrc, title) {
+function App (mkSrc?: string, title?: string): App {
 	const application = new Gtk.Application()
-	/** @type {any} */
-	let appWindow
-	/** @type {any} */
-	let webView
+	let appWindow: any
+	let webView: any
 
-	/**
-	 * @param {string} title
-	 * @param {string | void} subtitle
-	 * @param {{onOpen: (filename: string) => void} | void} options
-	 */
-	function createHeaderBar (title, subtitle, options) {
+	function createHeaderBar (
+		title: string, subtitle?: string, options?: {onOpen(filename: string): void}
+	) {
 		const headerBar = new Gtk.HeaderBar()
 		headerBar.set_title(title)
 		if (subtitle != null) {
@@ -185,7 +168,7 @@ function App (mkSrc, title) {
 		const button = new Gtk.Button({label: 'Open'})
 		if (options && options.onOpen) {
 			button.connect ('clicked', () => {
-				const filename = openDialog(appWindow)
+				const filename = openFileDialog(appWindow)
 				if (filename != null) {
 					options.onOpen(filename)
 				}
@@ -275,9 +258,8 @@ function App (mkSrc, title) {
 ///////////////////////////////////////////////////////////
 // Script starts...
 
-/** @type {string | undefined} */
-let markdownSrc
-let basename
+let markdownSrc: string | undefined
+let basename: string | undefined
 
 // Were we supplied a markdown filename to use?
 if (ARGV.length > 0) {

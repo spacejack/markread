@@ -25,6 +25,7 @@
     "no-string-literal": false,
     "no-eval": true,
     "no-internal-module": false,
+    "no-reference": false,
     "no-trailing-whitespace": true,
     "no-unused-expression": false,
     "no-unused-variable": true,

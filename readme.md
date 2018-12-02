@@ -16,13 +16,14 @@ Then go to `http://localhost:3000/` in your browser.
 
 	npm run build
 
-Outputs to `public/`
+* Outputs webview app to `public/`
+* Outputs executable GTK/GJS script to `markread`
 
 ## Run as a Gnome GJS/GTK app:
 
-First `npm run build` or `npm run compile`. Then:
+First `npm run build`, then:
 
-	./markread.js readme.md
+	./markread readme.md
 
 ### Ad-hoc install on a Linux system
 
@@ -30,9 +31,7 @@ To install to `/opt/markread`:
 
 	npm run build
 	sudo mkdir /opt/markread
-	sudo chown <you> /opt/markread
-	sudo chgrp <you> /opt/markread
-	cp markread.js /opt/markread/markread
-	cp -r public /opt/markread
+	sudo cp markread /opt/markread/markread
+	sudo cp -r public /opt/markread
 
 Now you can right-click an `.md` file and set its default application to `/opt/markread/markread`. Then double-clicking `.md` files will auto-launch this app.

@@ -84,8 +84,10 @@ npm-debug.log*
 /libpeerconnection.log
 testem.log
 
-# App generated & config files
+# Build generated
 /public/css/*.css
 /public/css/*.map
 /public/js/*.js
 /public/js/*.map
+/markread.js
+/markread
