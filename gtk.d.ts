@@ -14,4 +14,7 @@ declare const imports: GJS_Imports
 declare const ARGV: string[]
 
 /** Print to stdout */
-declare function print(msg: string): void
+declare function print (msg: string): void
+
+/** Print to stderr */
+declare function printerr (msg: string): void

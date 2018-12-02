@@ -25,6 +25,7 @@
   "globals": {
     "ARGV": true,
     "imports": true,
-    "print": true
+    "print": true,
+    "printerr": true
   }
 }

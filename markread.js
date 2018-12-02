@@ -60,7 +60,7 @@ function tryLoadFile (filename) {
 	try {
 		return GLib.file_get_contents(filename)[1]
 	} catch (err) {
-		print(`Failed to load '${filename}'`)
+		printerr(`Failed to load '${filename}'`)
 	}
 }
 
