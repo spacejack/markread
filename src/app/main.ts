@@ -1,13 +1,6 @@
-///<reference path="types/gtk.d.ts"/>
-
-imports.gi.versions.Gtk = '3.0'
-imports.gi.versions.WebKit2 = '4.0'
-
-const GLib = imports.gi.GLib
-const Gio = imports.gi.Gio
-const GObj = imports.gi.GObject
-const Gtk = imports.gi.Gtk
-const Webkit = imports.gi.WebKit2
+import {GLib, GObj, Gtk, Webkit} from './gi'
+import * as fs from './fsutil'
+import {openFileDialog} from './dialog'
 
 /**
  * Escape a string so it can be used within a single-quoted string.
@@ -16,117 +9,6 @@ const Webkit = imports.gi.WebKit2
 function escapeString (str?: string) {
 	return str != null
 		? str.replace(/\'/g, "\\'").replace(/\n/g, '\\n') : ''
-}
-
-function getBaseName (path: string) {
-	const pos = path.lastIndexOf('/')
-	return pos >= 0 ? path.substr(pos + 1) : path
-}
-
-/**
- * Somewhat convoluted way to get abs app directory.
- * SEE: https://github.com/optimisme/gjs-examples/blob/master/egAsset.js#L17
- * @returns {string} Absolute application directory path
- */
-function getAppDirectory(): string {
-	const stack = (new Error()).stack || ''
-	const stackLine = stack.split('\n')[1]
-	if (!stackLine) {
-		throw new Error('Could not find current file in stack (2)')
-	}
-	const coincidence = /@(.+):\d+/.exec(stackLine)
-	if (!coincidence) {
-		throw new Error('Could not find current file in stack (3)')
-	}
-	const path = coincidence[1]
-	const file = Gio.File.new_for_path(path)
-	return file.get_parent().get_path()
-	// full exe path: file.get_path(),
-	// full exe dir : file.get_parent().get_path(),
-	// exe basename : file.get_basename()
-}
-
-/**
- * TODO: Make this async? Don't swallow exception?
- * @param {string} filename
- * @returns File content as a buffer or undefined if failed.
- */
-function tryLoadFile (filename: string): string | void {
-	try {
-		return GLib.file_get_contents(filename)[1]
-	} catch (err) {
-		printerr(`Failed to load '${filename}'`)
-	}
-}
-
-/**
- * @param filename Name of file to load
- * @returns Text content of file or undefined if load failed
- */
-function tryLoadTextFile (filename: string) {
-	const result = tryLoadFile(filename)
-	// TODO: How to avoid string conversion warning here?
-	return result != null ? String(result) : undefined
-}
-
-/**
- * Show the Open File dialog.
- * @param window The window that is opening the file dialog
- * @returns The selected filename or undefined
- */
-function openFileDialog (window: any): string | undefined {
-	const filter = new Gtk.FileFilter()
-	filter.add_mime_type('text/plain')
-
-	const chooser = new Gtk.FileChooserDialog({
-		action: Gtk.FileChooserAction.OPEN,
-		filter,
-		select_multiple: false,
-		transient_for: window,
-		title: 'Open'
-	})
-
-	// Without setting a current folder, folders won't show its contents
-	// Use app home folder by default:
-	const path = '~/Documents' // getAppDirectory()
-	chooser.set_current_folder(path)
-
-	// Add the buttons and its return values
-	chooser.add_button('Cancel', Gtk.ResponseType.CANCEL)
-	chooser.add_button('OK', Gtk.ResponseType.OK)
-
-	// This is to add the 'combo' filtering options
-	const store = new Gtk.ListStore()
-	store.set_column_types([GObj.TYPE_STRING, GObj.TYPE_STRING])
-	store.set(store.append(), [0, 1], ['text', 'text/plain'])
-	store.set(store.append(), [0, 1], ['md', '*.md'])
-	//store.set(store.append(), [0, 1], ['js', '*.js'])
-
-	const combo = new Gtk.ComboBox({model: store})
-	const renderer = new Gtk.CellRendererText()
-	combo.pack_start(renderer, false)
-	combo.add_attribute(renderer, "text", 1)
-	combo.set_active(0)
-	combo.connect('changed', (widget: any) => {
-		const model = widget.get_model()
-		const active = widget.get_active_iter()[1]
-		const type = model.get_value(active, 0)
-		const text = model.get_value(active, 1)
-		const filter = new Gtk.FileFilter()
-		if (type === 'text') {
-			filter.add_mime_type(text)
-		} else {
-			filter.add_pattern(text)
-		}
-		chooser.set_filter(filter)
-	})
-	chooser.set_extra_widget(combo)
-
-	// Run the dialog
-	const result = chooser.run()
-	const filename = chooser.get_filename()
-	chooser.destroy()
-	return result === Gtk.ResponseType.OK ? filename : undefined
 }
 
 /**
@@ -190,9 +72,9 @@ function App (mkSrc?: string, title?: string): App {
 
 		appWindow.set_titlebar(createHeaderBar('MarkRead', undefined, {
 			onOpen(filename) {
-				const mkSrc = tryLoadTextFile(filename)
+				const mkSrc = fs.tryLoadTextFile(filename)
 				if (mkSrc != null) {
-					const basename = getBaseName(filename)
+					const basename = fs.getBaseName(filename)
 					sendMarkdownToWebView(webView, mkSrc, basename)
 					appWindow.title = basename + ' - MarkRead'
 				}
@@ -205,7 +87,7 @@ function App (mkSrc?: string, title?: string): App {
 		// Put the web app into the webview
 		webView.load_uri(
 			//GLib.filename_to_uri(`${GLib.get_current_dir()}/../public/index.html`, null)
-			GLib.filename_to_uri(`${getAppDirectory()}/public/index.html`, null)
+			GLib.filename_to_uri(`${fs.getAppDirectory()}/public/index.html`, null)
 		)
 
 		// If a markdown file was loaded on startup we need to send it
@@ -265,9 +147,9 @@ let basename: string | undefined
 if (ARGV.length > 0) {
 	const filename = ARGV[0]
 	if (filename) {
-		markdownSrc = tryLoadTextFile(filename)
+		markdownSrc = fs.tryLoadTextFile(filename)
 		if (markdownSrc != null) {
-			basename = getBaseName(filename)
+			basename = fs.getBaseName(filename)
 		}
 	}
 }

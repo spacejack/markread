@@ -1,15 +1,12 @@
 {
   "compilerOptions": {
     "target": "es2018",
-    "module": "amd",
-    "esModuleInterop": true,
+    "module": "commonjs",
     "lib": ["es2018"],
     "skipLibCheck": true,
-    "strict": true,
-    "outFile": "../../markread.js",
+    "strict": true
   },
   "files": ["main.ts"],
-  "exclude": ["../../node_modules"],
   "compileOnSave": false,
   "buildOnSave": false
 }
