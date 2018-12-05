@@ -1,30 +1,31 @@
 import {GLib, GObj, Gtk, Webkit} from './gi'
+import {IPC} from './ipc'
 import * as fs from './fsutil'
 import {openFileDialog} from './dialog'
 
-/**
- * Escape a string so it can be used within a single-quoted string.
- * TODO: How to ensure safely sanitized?
- */
-function escapeString (str?: string) {
-	return str != null
-		? str.replace(/\'/g, "\\'").replace(/\n/g, '\\n') : ''
-}
+type Theme = 0 | 1
+const THEME_DARK: Theme  = 0
+const THEME_LIGHT: Theme = 1
 
 /**
  * Send the markdown source to the browser context via
  * a global window function that it has exposed.
  */
-function sendMarkdownToWebView (webView: any, mkSrc: string, filename?: string) {
-	return new Promise(res => {
-		const script = `handleMarkdownContent('${escapeString(mkSrc)}', '${escapeString(filename)}')`
-		webView.run_javascript(script, null, () => {
-			print("Sent markdown content to WebView")
-			res()
-		})
-	})
+/* function sendMarkdownToWebView (webView: any, mkSrc: string, filename?: string): Promise<void> {
+	const script = `handleMarkdownContent('${ipc.escapeString(mkSrc)}', '${ipc.escapeString(filename)}')`
+	return ipc.runScript(webView, script)
+} */
+
+function hasDarkBackground (widget: any) {
+	const style = widget.get_style_context()
+	const {red, green, blue} = style.get_property("background-color", Gtk.StateFlags.NORMAL)
+	const bgAvg = (red + green + blue) / 3
+	return bgAvg < 0.5
 }
 
+/**
+ * Public interface for App instance
+ */
 interface App {
 	run(argv: string[]): void
 	setTitle(title: string): void
@@ -37,6 +38,8 @@ function App (mkSrc?: string, title?: string): App {
 	const application = new Gtk.Application()
 	let appWindow: any
 	let webView: any
+	let theme: Theme = THEME_LIGHT
+	let ipc: IPC
 
 	function createHeaderBar (
 		title: string, subtitle?: string, options?: {onOpen(filename: string): void}
@@ -75,11 +78,14 @@ function App (mkSrc?: string, title?: string): App {
 				const mkSrc = fs.tryLoadTextFile(filename)
 				if (mkSrc != null) {
 					const basename = fs.getBaseName(filename)
-					sendMarkdownToWebView(webView, mkSrc, basename)
+					//sendMarkdownToWebView(webView, mkSrc, basename)
+					ipc.send('markdown', {filename: basename, source: mkSrc})
 					appWindow.title = basename + ' - MarkRead'
 				}
 			}
 		}))
+
+		theme = hasDarkBackground(appWindow) ? THEME_DARK : THEME_LIGHT
 
 		// Create a webview to show the web app
 		webView = new Webkit.WebView()
@@ -89,6 +95,12 @@ function App (mkSrc?: string, title?: string): App {
 			//GLib.filename_to_uri(`${GLib.get_current_dir()}/../public/index.html`, null)
 			GLib.filename_to_uri(`${fs.getAppDirectory()}/public/index.html`, null)
 		)
+
+		ipc = IPC(webView)
+		ipc.on('dropfile', (data: {filename: string}) => {
+			print('Got dropfile message')
+			appWindow.title = data.filename + ' - MarkRead'
+		})
 
 		// If a markdown file was loaded on startup we need to send it
 		// to the client to render...
@@ -108,7 +120,8 @@ function App (mkSrc?: string, title?: string): App {
 				if (numLoaded === NUM_FILES_TO_LOAD) {
 					print(`Loading ${title}`)
 					//GLib.timeout_add(null, 1000, () => {
-					sendMarkdownToWebView(webView, mkSrc, title)
+					//sendMarkdownToWebView(webView, mkSrc, title)
+					ipc.send('markdown', {source: mkSrc, filename: basename})
 					appWindow.title = title + ' - MarkRead'
 					//})
 				}

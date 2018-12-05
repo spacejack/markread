@@ -1,6 +1,7 @@
 // App entry point
 import m from 'mithril'
 import MarkdownIt from 'markdown-it'
+import * as ipc from './ipc'
 import state from './state'
 import App from './components/App'
 
@@ -50,6 +51,7 @@ function onDrop (e: DragEvent) {
 	const file = e.dataTransfer.files[0]
 	readFile(file).then(src => {
 		handleMarkdownContent(src, file.name)
+		ipc.send('dropfile', {filename: file.name})
 	}).catch(err => {
 		console.warn(err.message)
 	})
@@ -59,8 +61,10 @@ function onDrop (e: DragEvent) {
 document.body.addEventListener('dragover', onDragOver)
 document.body.addEventListener('drop', onDrop)
 
-// Make a global for this function
-;(window as any).handleMarkdownContent = handleMarkdownContent // tslint:disable-line align
+// Handle markdown messages from GTK app
+ipc.on('markdown', (data: {source: string, filename: string}) => {
+	handleMarkdownContent(data.source, data.filename)
+})
 
 ///////////////////////////////////////////////////////////
 // For browserify-hmr
