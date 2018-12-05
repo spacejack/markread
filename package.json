@@ -32,7 +32,7 @@
   "devDependencies": {
     "@types/markdown-it": "0.0.7",
     "@types/mithril": "^1.1.13",
-    "autoprefixer": "^9.3.1",
+    "autoprefixer": "^9.4.2",
     "browserify": "^16.2.3",
     "browserify-hmr": "^0.3.7",
     "budo": "^11.5.0",
