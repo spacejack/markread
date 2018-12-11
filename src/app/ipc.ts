@@ -28,64 +28,29 @@ export function runScript<T>(webView: any, script: string): Promise<T> {
 
 export type MessageCallback<T> = (data: T) => void
 
-const messageCallbacks = new Map<string, Set<MessageCallback<any>>>()
-
 export function IPC (webView: any) {
-	/* webView.connect('status_bar_text_changed', (arg: any, json: string) => {
-		// Get Webkit messages into GTK listening to 'status bar/window.status' signals
-		json = json || ''
-		json = json.trim()
-		if (!json) {
-			return
-		}
-		let message: any
-		try {
-			message = JSON.parse(json) as {id: string, data: any}
-		} catch (err) {
-			printerr("failed to parse IPC message json: " + json)
-			return
-		}
-		const set = messageCallbacks.get(message.id)
-		if (!set) {
-			return
-		}
-		for (const cb of set.values()) {
-			cb(message.data)
-		}
-	}) */
-
-	webView.connect('script-dialog', (wv: any, dlg: any) => {
-		//print('got dialog type: ' + dlg.get_dialog_type())
-		const json = dlg.get_message()
-		print('got dialog message: ' + json)
-		if (!json) {
-			return true
-		}
-		let message: any
-		try {
-			message = JSON.parse(json) as {id: string, data: any}
-		} catch (err) {
-			printerr("failed to parse IPC message json: " + json)
-			return true
-		}
-		const set = messageCallbacks.get(message.id)
-		if (!set) {
-			return true
-		}
-		print(`sending to '${message.id}' callbacks`)
-		for (const cb of set.values()) {
-			cb(message.data)
-		}
-		return true
-	})
+	const messageCallbacks = new Map<string, Set<MessageCallback<any>>>()
 
 	function on<T>(id: string, cb: MessageCallback<T>) {
 		let set = messageCallbacks.get(id)
 		if (set == null) {
 			set = new Set()
+			set.add(cb)
 			messageCallbacks.set(id, set)
+			// This is a new id, so setup the Webkit script message handler for it...
+			const contentManager = webView.get_user_content_manager()
+			contentManager.connect(`script-message-received::${id}`, (self: any, message: any) => {
+				const data = message.get_js_value().to_string()
+				const json = data ? JSON.parse(data) : undefined
+				for (const cb of set!.values()) {
+					cb(json)
+				}
+			})
+			contentManager.register_script_message_handler(id)
+			print('Setup dropfile handler')
+		} else {
+			set.add(cb)
 		}
-		set.add(cb)
 		return set.size
 	}
 
@@ -95,7 +60,16 @@ export function IPC (webView: any) {
 			return 0
 		}
 		set.delete(cb)
-		return set.size
+		if (set.size > 0) {
+			return set.size
+		}
+		// Was the last listener for this id. Remove the script message handler...
+		const contentManager = webView.get_user_content_manager()
+		contentManager.unregister_script_message_handler(id)
+		// TODO: Probably need a ref to the signal handler... :|
+		contentManager.disconnect(`script-message-received::${id}`)
+		messageCallbacks.delete(id)
+		return 0
 	}
 
 	/**

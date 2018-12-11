@@ -5,6 +5,12 @@ import * as ipc from './ipc'
 import state from './state'
 import App from './components/App'
 
+declare global {
+	interface Window {
+		webkit: any
+	}
+}
+
 m.mount(document.body, App)
 
 const md = new MarkdownIt({
@@ -51,6 +57,7 @@ function onDrop (e: DragEvent) {
 	const file = e.dataTransfer.files[0]
 	readFile(file).then(src => {
 		handleMarkdownContent(src, file.name)
+		//window.webkit.messageHandlers.dropfile.postMessage(JSON.stringify({filename: file.name}))
 		ipc.send('dropfile', {filename: file.name})
 	}).catch(err => {
 		console.warn(err.message)

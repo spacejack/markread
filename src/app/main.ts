@@ -1,4 +1,4 @@
-import {GLib, GObj, Gtk, Webkit} from './gi'
+import {GLib, Gtk, Webkit} from './gi'
 import {IPC} from './ipc'
 import * as fs from './fsutil'
 import {openFileDialog} from './dialog'
@@ -6,15 +6,6 @@ import {openFileDialog} from './dialog'
 type Theme = 0 | 1
 const THEME_DARK: Theme  = 0
 const THEME_LIGHT: Theme = 1
-
-/**
- * Send the markdown source to the browser context via
- * a global window function that it has exposed.
- */
-/* function sendMarkdownToWebView (webView: any, mkSrc: string, filename?: string): Promise<void> {
-	const script = `handleMarkdownContent('${ipc.escapeString(mkSrc)}', '${ipc.escapeString(filename)}')`
-	return ipc.runScript(webView, script)
-} */
 
 function hasDarkBackground (widget: any) {
 	const style = widget.get_style_context()
@@ -98,7 +89,6 @@ function App (mkSrc?: string, title?: string): App {
 
 		ipc = IPC(webView)
 		ipc.on('dropfile', (data: {filename: string}) => {
-			print('Got dropfile message')
 			appWindow.title = data.filename + ' - MarkRead'
 		})
 
@@ -120,7 +110,6 @@ function App (mkSrc?: string, title?: string): App {
 				if (numLoaded === NUM_FILES_TO_LOAD) {
 					print(`Loading ${title}`)
 					//GLib.timeout_add(null, 1000, () => {
-					//sendMarkdownToWebView(webView, mkSrc, title)
 					ipc.send('markdown', {source: mkSrc, filename: basename})
 					appWindow.title = title + ' - MarkRead'
 					//})

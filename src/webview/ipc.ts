@@ -1,5 +1,11 @@
 import * as logger from './logger'
 
+declare global {
+	interface Window {
+		webkit: any
+	}
+}
+
 export type MessageCallback<T> = (data: T) => void
 
 const messageCallbacks = new Map<string, Set<MessageCallback<any>>>()
@@ -20,15 +26,25 @@ export function off<T>(id: string, cb: MessageCallback<T>) {
 		return 0
 	}
 	set.delete(cb)
-	return set.size
+	if (set.size > 0) {
+		return set.size
+	}
+	messageCallbacks.delete(id)
+	return 0
 }
 
 export function send (id: string, data?: any) {
-	//window.status = JSON.stringify({id, value: data})
-	// This is the only way I know to send a message the Webkit2 WebView can listen for
-	alert(JSON.stringify({id, data}))
+	if (!window.webkit.messageHandlers[id]) {
+		throw new Error(`No webkit.messageHandlers for '${id}'`)
+	}
+	if (data != null) {
+		window.webkit.messageHandlers[id].postMessage(JSON.stringify(data))
+	} else {
+		window.webkit.messageHandlers[id].postMessage()
+	}
 }
 
+/** A function the GTK app can call */
 function handleIPCMessage (id: string, json?: string) {
 	const set = messageCallbacks.get(id)
 	if (set != null) {
@@ -46,4 +62,5 @@ function handleIPCMessage (id: string, json?: string) {
 	}
 }
 
+// Make it a global
 (window as any).handleIPCMessage = handleIPCMessage
