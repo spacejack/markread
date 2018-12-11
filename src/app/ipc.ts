@@ -1,14 +1,8 @@
 /**
  * Escape a string so it can be used within a single-quoted string.
- * TODO: How to ensure safely sanitized?
  */
-export function escapeString (str?: string) {
-	return str != null
-		? str.replace(/\'/g, "\\'").replace(/\n/g, '\\n') : ''
-}
-
-export function escapeJSON (json: string) {
-	return json.replace(/\\n/g, '\\\\n').replace(/\\t/g, '\\\\t')
+export function escapeString (str: string) {
+	return JSON.stringify(str).slice(1, -1)
 }
 
 /**
@@ -78,7 +72,7 @@ export function IPC (webView: any) {
 	function send (id: string, data: any) {
 		let script = `handleIPCMessage('${escapeString(id)}'`
 		if (data !== undefined) {
-			script += `,'${escapeJSON(JSON.stringify(data))}'`
+			script += `,'${escapeString(JSON.stringify(data))}'`
 		}
 		script += ')'
 		runScript(webView, script)
