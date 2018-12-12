@@ -6,7 +6,10 @@ export default function App(): m.Component {
 		view() {
 			return m('.app',
 				state.htmlContent != null
-					? m.trust(state.htmlContent)
+					? [
+						m.trust(state.htmlContent),
+						m('.bottom-padding')
+					]
 					: 'Drag & drop Markdown file here'
 			)
 		}
