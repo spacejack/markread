@@ -1,5 +1,5 @@
 /**
- * Escape a string so it can be used within a single-quoted string.
+ * Escape a string so it can be used within a double-quoted string.
  */
 export function escapeString (str: string) {
 	return JSON.stringify(str).slice(1, -1)
