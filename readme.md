@@ -50,7 +50,7 @@ You can also open files using the "Open" button or drag & drop them into the win
 
 First, a big thank-you to Github user [optimisme](https://github.com/optimisme) for providing [these examples](https://github.com/optimisme/gjs-examples). Without them I don't think I would've gotten anywhere.
 
-### IPC (Inter-Process-Communication)
+### IPC (Inter-Process Communication)
 
 I could find no up-to-date GJS examples using WebKit2 that demonstrated communicating between a GJS app and its webview. After much searching and pleading for help, I found a way to do this that is 50% okay.
 
