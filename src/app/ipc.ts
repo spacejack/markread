@@ -77,21 +77,21 @@ export function IPC (webView: any) {
 	async function send (id: string, data?: any) {
 		if (data === undefined) {
 			// No data, just a message id
-			return runScript(webView, `handleIPCMessage('${escapeString(id)}')`)
+			return runScript(webView, `handleIPCMessage("${escapeString(id)}")`)
 		}
 		const json = JSON.stringify(data)
 		if (json.length < CHUNK_SIZE) {
 			// Data fits in a single message
-			return runScript(webView, `handleIPCMessage('${escapeString(id)}','${escapeString(json)}')`)
+			return runScript(webView, `handleIPCMessage("${escapeString(id)}","${escapeString(json)}")`)
 		}
 		// Data is too long for a single message - send in chunks
 		msgUid += 1
-		await runScript(webView, `handleIPCMessageBegin('${msgUid}','${id}')`)
+		await runScript(webView, `handleIPCMessageBegin("${msgUid}","${id}")`)
 		for (let p = 0; p < json.length; p += CHUNK_SIZE) {
 			const chunk = json.substr(p, CHUNK_SIZE)
-			await runScript(webView, `handleIPCMessageChunk('${msgUid}','${escapeString(chunk)}')`)
+			await runScript(webView, `handleIPCMessageChunk("${msgUid}","${escapeString(chunk)}")`)
 		}
-		return runScript(webView, `handleIPCMessageEnd('${msgUid}')`)
+		return runScript(webView, `handleIPCMessageEnd("${msgUid}")`)
 	}
 
 	return {send, on, off}
