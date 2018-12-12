@@ -40,6 +40,10 @@ export function off<T>(id: string, cb: MessageCallback<T>) {
 }
 
 export function send (id: string, data?: any) {
+	if (!window.webkit) {
+		console.warn('Not a webkit webview')
+		return
+	}
 	if (!window.webkit.messageHandlers[id]) {
 		throw new Error(`No webkit.messageHandlers for '${id}'`)
 	}
