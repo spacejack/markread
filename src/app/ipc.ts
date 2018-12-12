@@ -8,7 +8,7 @@ export function escapeString (str: string) {
 /**
  * Runs a script directly. script must already be sanitized!
  */
-export function runScript<T>(webView: any, script: string): Promise<T> {
+export function runScript<T = void>(webView: any, script: string): Promise<T> {
 	return new Promise<T>((res, rej) => {
 		try {
 			webView.run_javascript(script, null, (t: T) => {
@@ -22,6 +22,11 @@ export function runScript<T>(webView: any, script: string): Promise<T> {
 
 export type MessageCallback<T> = (data: T) => void
 
+/** Max size of send data */
+export const CHUNK_SIZE = 800
+/** Message unique ID (incremented every send) */
+let msgUid = 0
+
 export function IPC (webView: any) {
 	const messageCallbacks = new Map<string, Set<MessageCallback<any>>>()
 
@@ -34,10 +39,10 @@ export function IPC (webView: any) {
 			// This is a new id, so setup the Webkit script message handler for it...
 			const contentManager = webView.get_user_content_manager()
 			contentManager.connect(`script-message-received::${id}`, (self: any, message: any) => {
-				const data = message.get_js_value().to_string()
-				const json = data ? JSON.parse(data) : undefined
+				const json = message.get_js_value().to_string()
+				const data = json ? JSON.parse(json) : undefined
 				for (const cb of set!.values()) {
-					cb(json)
+					cb(data)
 				}
 			})
 			contentManager.register_script_message_handler(id)
@@ -69,13 +74,24 @@ export function IPC (webView: any) {
 	/**
 	 * Send a message to client-side IPC message handler
 	 */
-	function send (id: string, data: any) {
-		let script = `handleIPCMessage('${escapeString(id)}'`
-		if (data !== undefined) {
-			script += `,'${escapeString(JSON.stringify(data))}'`
+	async function send (id: string, data?: any) {
+		if (data === undefined) {
+			// No data, just a message id
+			return runScript(webView, `handleIPCMessage('${escapeString(id)}')`)
 		}
-		script += ')'
-		runScript(webView, script)
+		const json = JSON.stringify(data)
+		if (json.length < CHUNK_SIZE) {
+			// Data fits in a single message
+			return runScript(webView, `handleIPCMessage('${escapeString(id)}','${escapeString(json)}')`)
+		}
+		// Data is too long for a single message - send in chunks
+		msgUid += 1
+		await runScript(webView, `handleIPCMessageBegin('${msgUid}','${id}')`)
+		for (let p = 0; p < json.length; p += CHUNK_SIZE) {
+			const chunk = json.substr(p, CHUNK_SIZE)
+			await runScript(webView, `handleIPCMessageChunk('${msgUid}','${escapeString(chunk)}')`)
+		}
+		return runScript(webView, `handleIPCMessageEnd('${msgUid}')`)
 	}
 
 	return {send, on, off}
